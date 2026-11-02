@@ -20,3 +20,14 @@ represented as null. This checks the collector-to-store path on the authoring ho
 ## GitHub publication verification
 
 [Run 41489569383](https://github.com/Davorin51/edgepulse/actions/runs/41489569383) passed both Python 3.11 and 3.12 jobs on source commit `c84c780692bee5da060bb78bbeed65592c8581bf`. The jobs ran Ruff, formatting, pytest, package builds, Docker image build, Compose startup and an HTTP readiness request. No Raspberry Pi/Jetson board test was performed. The follow-up documentation commit does not change tested application code.
+
+## v0.2.0 agent delivery upgrade
+
+Executed locally on Python 3.12.14: **80 tests passed**, **96.33% statement coverage**.
+Ruff lint, formatting and whitespace checks passed. The existing Starlette/httpx deprecation
+warning remains visible. New loopback HTTP integration tests exercise a 503 response followed
+by a successful 202 acknowledgement and verify that a 302 redirect sends no request to the
+redirect target. Deterministic-clock tests check exponential delay, cap, fresh-sample recovery
+and discarded counts; additional tests cover malformed acknowledgements, timeouts, HTTP error
+classification, invalid configuration, bounded collection failures and sanitized fatal logs.
+These tests do not require or demonstrate an attached Raspberry Pi/Jetson.

@@ -44,9 +44,41 @@ edgepulse-agent --url http://YOUR-LAB-HOST:8000 \
   --id my-edge --name 'My edge device' --platform Linux
 ```
 
-Use `--samples 5` for a bounded session. An unavailable temperature remains null rather than a fake
+Use `--samples 5` for five collection attempts, including collection failures and deferred sends. An unavailable temperature remains null rather than a fake
 zero. The first CPU sample is computed from actual elapsed counter deltas. A thermal zone's physical
 meaning depends on the board; it is not automatically asserted to be GPU or CPU junction temperature.
+
+## Agent delivery and recovery
+
+```bash
+edgepulse-agent --url http://YOUR-LAB-HOST:8000 \
+  --id my-edge --name 'My edge device' \
+  --interval 3 --timeout 5 --retry-base 2 --retry-max 60
+```
+
+Network failures, socket timeouts, HTTP 408/429 and 5xx responses trigger exponential backoff
+(2, 4, 8 seconds, capped at 60 by default). Delays use a monotonic clock and start after the
+request finishes; the next send happens on a collection tick after that delay. `--timeout` is
+the socket operation timeout, not a hard deadline for the whole process. Requests are synchronous,
+so a slow request also delays the next collection.
+
+**Latest measurements only:** failed and deferred samples are discarded, with their count logged.
+There is no disk queue or historical replay. After reconnection the next attempt sends a fresh
+measurement, preventing stale replay from reviving an offline device. This prioritizes current
+fleet state over lossless historical collection. Delivery is not exactly-once: a lost acknowledgement
+can leave an accepted sample counted as discarded by the agent.
+
+Other HTTP errors (including authentication failures), redirects and invalid acknowledgements stop
+the agent. Redirects are never followed with the bearer token. Fix the URL/token before restarting.
+A successful send requires HTTP 202 and `{"accepted": true}`; a generic HTML success page is rejected.
+
+The agent emits one JSON line per attempt: `delivered`, `retry_scheduled`, `backoff`,
+`collection_error`, `no_cpu_delta` or `fatal`. Delivery lines include `discarded_samples`,
+`retry_in` (seconds) and a sanitized `error` category. Counts reset after a successful delivery.
+Tokens, response bodies and raw network exceptions are excluded from these runtime logs.
+Exit codes: 0 for a completed bounded run with at least one acknowledged send, 1 for a fatal
+transport failure or a bounded run with no acknowledgements, 2 for invalid arguments, 130 for
+keyboard interruption. A 0 exit does not mean every measurement was delivered.
 
 ## Fault lab
 
@@ -94,7 +126,8 @@ python -m build
 ```
 
 Tests cover token rejection, malformed metrics, null temperature, status thresholds, reserved IDs,
-mode separation, SQLite persistence/retention, scoped fault controls and the agent upload loop.
+mode separation, SQLite persistence/retention, scoped fault controls, retry/backoff, fresh-sample
+recovery, credential redirect protection, HTTP acknowledgement checks and bounded agent runs.
 See docs/verification.md for executed results and remaining limits.
 
 ## Scope and next milestones
@@ -105,5 +138,6 @@ SQLite device IDs are not a full enrollment/ownership system. The shared token a
 write access but is not per-device cryptographic attestation. No OTA update or arbitrary commands.
 
 Next: board validation on Raspberry Pi/Jetson, device enrollment and scoped read authentication,
-TLS provisioning, offline retry/backoff, UI end-to-end automation, then optional Jetson-specific
+TLS provisioning, an explicitly timestamped historical ingestion path if lossless buffering is needed,
+UI end-to-end automation, then optional Jetson-specific
 GPU collectors. An FPGA UART/AXI-counter adapter is a future integration, not implemented hardware.

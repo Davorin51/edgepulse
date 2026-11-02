@@ -5,9 +5,11 @@ import json
 import math
 import os
 import time
-import urllib.error
-import urllib.request
+from dataclasses import asdict
 from pathlib import Path
+
+from edgepulse.delivery import FatalDeliveryError, HTTPTransport, LatestDelivery
+from edgepulse.domain import Sample
 
 
 def cpu_counters(proc: Path):
@@ -55,6 +57,11 @@ def main():
     parser.add_argument("--platform", default="Linux")
     parser.add_argument("--interval", type=float, default=3)
     parser.add_argument("--samples", type=int)
+    parser.add_argument("--retry-base", type=float, default=2, help="First retry delay in seconds")
+    parser.add_argument(
+        "--retry-max", type=float, default=60, help="Maximum exponential retry delay"
+    )
+    parser.add_argument("--timeout", type=float, default=5, help="Per-request timeout in seconds")
     args = parser.parse_args()
     token = os.environ.get("EDGEPULSE_TOKEN", "")
     if (
@@ -64,33 +71,67 @@ def main():
         or (args.samples is not None and args.samples < 1)
     ):
         parser.error("Set a token of at least 24 characters; interval >= .2 and samples >= 1")
-    previous, sequence = cpu_counters(Path("/proc")), 0
+    try:
+        transport = HTTPTransport(args.url, token, args.timeout)
+        delivery = LatestDelivery(transport, retry_base=args.retry_base, retry_max=args.retry_max)
+        Sample(
+            device_id=args.id,
+            name=args.name,
+            platform=args.platform,
+            cpu=0,
+            memory=0,
+            uptime=0,
+            sequence=0,
+        )
+        previous = cpu_counters(Path("/proc"))
+    except (ValueError, OSError, IndexError) as exc:
+        parser.error(str(exc))
+    sequence = 0
+    delivered = False
     try:
         while args.samples is None or sequence < args.samples:
             time.sleep(args.interval)
-            previous, metrics = read_metrics(previous)
-            if metrics["cpu"] is None:
-                continue
-            from edgepulse.domain import Sample
-
-            payload = Sample(
-                device_id=args.id,
-                name=args.name,
-                platform=args.platform,
-                sequence=sequence,
-                **metrics,
-            )
-            request = urllib.request.Request(
-                args.url.rstrip("/") + "/api/telemetry",
-                data=payload.model_dump_json().encode(),
-                headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
-                method="POST",
-            )
+            current_sequence = sequence
+            sequence += 1  # --samples bounds collection attempts, including unreadable counters.
             try:
-                with urllib.request.urlopen(request, timeout=5) as response:
-                    print(json.dumps({"sequence": sequence, "status": response.status}), flush=True)
-            except (OSError, urllib.error.URLError) as exc:
-                print(json.dumps({"sequence": sequence, "error": str(exc)}), flush=True)
-            sequence += 1
+                previous, metrics = read_metrics(previous)
+            except (OSError, ValueError, IndexError):
+                print(
+                    json.dumps({"sequence": current_sequence, "status": "collection_error"}),
+                    flush=True,
+                )
+                continue
+            if metrics["cpu"] is None:
+                print(
+                    json.dumps({"sequence": current_sequence, "status": "no_cpu_delta"}), flush=True
+                )
+                continue
+            try:
+                payload = Sample(
+                    device_id=args.id,
+                    name=args.name,
+                    platform=args.platform,
+                    sequence=current_sequence,
+                    **metrics,
+                )
+            except ValueError:
+                print(
+                    json.dumps({"sequence": current_sequence, "status": "collection_error"}),
+                    flush=True,
+                )
+                continue
+            try:
+                result = delivery.offer(payload)
+                delivered = delivered or result.status == "delivered"
+                print(json.dumps({"sequence": current_sequence, **asdict(result)}), flush=True)
+            except FatalDeliveryError as exc:
+                print(
+                    json.dumps(
+                        {"sequence": current_sequence, "status": "fatal", "error": str(exc)}
+                    ),
+                    flush=True,
+                )
+                return 1
     except KeyboardInterrupt:
-        pass
+        return 130
+    return 0 if delivered else 1
