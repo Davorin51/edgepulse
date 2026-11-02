@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+.coverage
+coverage.xml
+*.sqlite3*
+.env
+build/
+*.tar.gz
+
+.openai/
+*.whl

@@ -1,0 +1,12 @@
+services:
+  edgepulse:
+    build: .
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      EDGEPULSE_TOKEN: ${EDGEPULSE_TOKEN:-}
+      EDGEPULSE_DEMO: '1'
+    volumes: ["telemetry:/data"]
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+volumes:
+  telemetry:

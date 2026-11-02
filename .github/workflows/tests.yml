@@ -1,0 +1,26 @@
+name: Python verification
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e '.[dev]'
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: pytest --cov=edgepulse --cov-fail-under=80
+      - run: python -m build
+      - name: Docker build and readiness
+        run: |
+          docker compose up -d --build
+          for i in $(seq 1 30); do curl --fail http://127.0.0.1:8000/api/status && exit 0; sleep 2; done
+          docker compose logs
+          exit 1
