@@ -1,5 +1,7 @@
 # EdgePulse — Edge Systems Lab
 
+[![Python verification](https://github.com/Davorin51/edgepulse/actions/workflows/tests.yml/badge.svg)](https://github.com/Davorin51/edgepulse/actions/workflows/tests.yml)
+
 A local-first telemetry and fault-injection lab: native Linux measurements, a FastAPI/SQLite
 backend, and an interactive browser dashboard. Run it without a board, then connect a Linux
 agent when hardware is available. Original source; no employer/university code or paid model APIs.
@@ -64,9 +66,7 @@ docker compose up --build
 ```
 
 The published port binds to host loopback. The container runs as a non-root user, retains SQLite in
-a named volume, uses no host /proc mount and never receives the Docker socket. This environment
-has no Docker executable, so Docker build/runtime is **not verified locally**. The provided CI
-workflow checks it when run on GitHub; no completed GitHub CI run is claimed.
+a named volume, uses no host /proc mount and never receives the Docker socket. Docker was unavailable in the authoring environment. The [first GitHub Actions run](https://github.com/Davorin51/edgepulse/actions/runs/41489569383) subsequently passed on Python 3.11 and 3.12, including Docker image build, Compose startup and the service readiness check. Physical board testing remains pending.
 
 ## Architecture
 
