@@ -9,6 +9,7 @@ from fastapi import FastAPI, Header, HTTPException, Request, Path, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from edgepulse.alerts import fleet_alerts
 from edgepulse.domain import Fault, Sample, demo_sample
 from edgepulse.store import Store
 
@@ -58,6 +59,15 @@ def create_app(database=None, token=None, demo=True, clock=time.time):
         if read_key and not hmac.compare_digest(authorization.encode(), ("Bearer " + read_key).encode()):
             raise HTTPException(401, "Invalid dashboard read token")
         return {"devices": store.fleet(clock()), "now": clock()}
+
+    @app.get("/api/alerts")
+    def alerts(authorization: str = Header(default="")):
+        if read_key and not hmac.compare_digest(
+            authorization.encode(), ("Bearer " + read_key).encode()
+        ):
+            raise HTTPException(401, "Invalid dashboard read token")
+        active = fleet_alerts(store.fleet(clock()))
+        return {"alerts": active, "count": len(active), "now": clock(), "type": "snapshot"}
 
     @app.get("/api/devices/{device_id}/history")
     def device_history(
