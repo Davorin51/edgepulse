@@ -7,7 +7,16 @@ from edgepulse.server import create_app
 
 
 def sample(seq):
-    return Sample(device_id="pi-real", name="Pi", platform="Linux", mode="measured", cpu=float(seq), memory=30, uptime=seq, sequence=seq)
+    return Sample(
+        device_id="pi-real",
+        name="Pi",
+        platform="Linux",
+        mode="measured",
+        cpu=float(seq),
+        memory=30,
+        uptime=seq,
+        sequence=seq,
+    )
 
 
 def test_history_bounds_and_order(tmp_path, monkeypatch):
