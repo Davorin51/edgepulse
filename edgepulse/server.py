@@ -5,8 +5,7 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException, Query, Request
-from fastapi import Path as ApiPath
+from fastapi import FastAPI, Header, HTTPException, Path as ApiPath, Query, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
