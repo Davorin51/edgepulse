@@ -5,7 +5,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -54,7 +54,7 @@ def validate_phase(fetch, device_id, phase, duration, interval, sleep=time.sleep
     states = [item["state"] for item in observations]
     measured = [item for item in observations if item["mode"] == "measured"]
     sequences = [item["sequence"] for item in measured]
-    progressed = any(b > a for a, b in zip(sequences, sequences[1:]))
+    progressed = any(b > a for a, b in zip(sequences, sequences[1:], strict=False))
     if phase == "baseline":
         passed = len(measured) >= 2 and progressed and all(s != "offline" for s in states)
     elif phase == "outage":
@@ -85,7 +85,7 @@ def main(argv=None):
         "schema": 1,
         "device_id": args.device,
         "server_url": args.url,
-        "observed_at": datetime.now(timezone.utc).isoformat(),
+        "observed_at": datetime.now(UTC).isoformat(),
         **result,
     }
     with open(args.output, "w", encoding="utf-8") as file:
