@@ -66,11 +66,18 @@ def create_app(database=None, token=None, demo=True, clock=time.time):
 
     @app.get("/api/status")
     def status():
-        return {"service": "edgepulse", "demo_enabled": demo, "ingestion_enabled": len(key) >= 24, "read_auth_enabled": bool(read_key)}
+        return {
+            "service": "edgepulse",
+            "demo_enabled": demo,
+            "ingestion_enabled": len(key) >= 24,
+            "read_auth_enabled": bool(read_key),
+        }
 
     @app.get("/api/fleet")
     def fleet(authorization: str = Header(default="")):
-        if read_key and not hmac.compare_digest(authorization.encode(), ("Bearer " + read_key).encode()):
+        if read_key and not hmac.compare_digest(
+            authorization.encode(), ("Bearer " + read_key).encode()
+        ):
             raise HTTPException(401, "Invalid dashboard read token")
         return {"devices": store.fleet(clock()), "now": clock()}
 
@@ -95,7 +102,12 @@ def create_app(database=None, token=None, demo=True, clock=time.time):
             raise HTTPException(401, "Invalid dashboard read token")
         now = clock()
         records = incidents.list(limit=limit, status=status)
-        return {"incidents": records, "count": len(records), "now": now, "tracking": "background_poll"}
+        return {
+            "incidents": records,
+            "count": len(records),
+            "now": now,
+            "tracking": "background_poll",
+        }
 
     @app.get("/api/devices/{device_id}/history")
     def device_history(
