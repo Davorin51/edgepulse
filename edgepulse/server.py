@@ -5,7 +5,7 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Request, Path, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -58,6 +58,21 @@ def create_app(database=None, token=None, demo=True, clock=time.time):
         if read_key and not hmac.compare_digest(authorization.encode(), ("Bearer " + read_key).encode()):
             raise HTTPException(401, "Invalid dashboard read token")
         return {"devices": store.fleet(clock()), "now": clock()}
+
+    @app.get("/api/devices/{device_id}/history")
+    def device_history(
+        device_id: str = Path(pattern=r"^[a-zA-Z0-9_-]{1,48}$"),
+        limit: int = Query(default=60, ge=1, le=120),
+        authorization: str = Header(default=""),
+    ):
+        if read_key and not hmac.compare_digest(
+            authorization.encode(), ("Bearer " + read_key).encode()
+        ):
+            raise HTTPException(401, "Invalid dashboard read token")
+        samples = store.history(device_id, limit)
+        if samples is None:
+            raise HTTPException(404, "Device not found")
+        return {"device_id": device_id, "samples": samples, "count": len(samples)}
 
     @app.post("/api/telemetry", status_code=202)
     def ingest(sample: Sample, authorization: str = Header(default="")):

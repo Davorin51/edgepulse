@@ -66,3 +66,15 @@ class Store:
                     }
                 )
             return result
+
+    def history(self, device_id: str, limit: int = 60):
+        """Return bounded samples oldest-to-newest, using server receipt time."""
+        with self.connect() as db:
+            found = db.execute("SELECT 1 FROM devices WHERE id=?", (device_id,)).fetchone()
+            if not found:
+                return None
+            rows = db.execute(
+                "SELECT payload, received FROM samples WHERE device=? ORDER BY id DESC LIMIT ?",
+                (device_id, limit),
+            ).fetchall()
+            return [{**json.loads(payload), "received": received} for payload, received in reversed(rows)]
