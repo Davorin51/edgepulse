@@ -17,8 +17,13 @@ def test_read_token_protects_fleet(tmp_path, monkeypatch):
     monkeypatch.setenv("EDGEPULSE_READ_TOKEN", token)
     with TestClient(create_app(database=tmp_path / "db.sqlite", demo=False)) as client:
         assert client.get("/api/fleet").status_code == 401
-        assert client.get("/api/fleet", headers={"Authorization": "Bearer wrong"}).status_code == 401
-        assert client.get("/api/fleet", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+        assert (
+            client.get("/api/fleet", headers={"Authorization": "Bearer wrong"}).status_code == 401
+        )
+        assert (
+            client.get("/api/fleet", headers={"Authorization": f"Bearer {token}"}).status_code
+            == 200
+        )
         assert client.get("/api/status").json()["read_auth_enabled"] is True
 
 
