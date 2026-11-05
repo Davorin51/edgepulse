@@ -109,6 +109,23 @@ def create_app(database=None, token=None, demo=True, clock=time.time):
             "tracking": "background_poll",
         }
 
+    @app.post("/api/incidents/{incident_id}/acknowledge")
+    def acknowledge_incident(
+        request: Request,
+        incident_id: int = ApiPath(ge=1),
+        authorization: str = Header(default=""),
+    ):
+        same_origin(request)
+        if not read_key:
+            raise HTTPException(503, "Configure EDGEPULSE_READ_TOKEN for incident writes")
+        if not hmac.compare_digest(
+            authorization.encode(), ("Bearer " + read_key).encode()
+        ):
+            raise HTTPException(401, "Invalid dashboard read token")
+        if not incidents.acknowledge(incident_id, clock()):
+            raise HTTPException(404, "Incident not found")
+        return {"id": incident_id, "acknowledged": True}
+
     @app.get("/api/devices/{device_id}/history")
     def device_history(
         device_id: str = ApiPath(pattern=r"^[a-zA-Z0-9_-]{1,48}$"),
