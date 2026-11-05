@@ -42,7 +42,11 @@ def validate_phase(fetch, device_id, phase, duration, interval, sleep=time.sleep
             )
         except (HTTPError, URLError, OSError, ValueError, KeyError, TypeError) as exc:
             observations.append(
-                {"elapsed_s": round(elapsed, 2), "state": "request_error", "error": type(exc).__name__}
+                {
+                    "elapsed_s": round(elapsed, 2),
+                    "state": "request_error",
+                    "error": type(exc).__name__,
+                }
             )
         if elapsed >= duration:
             break
@@ -56,10 +60,8 @@ def validate_phase(fetch, device_id, phase, duration, interval, sleep=time.sleep
     elif phase == "outage":
         passed = "offline" in states
     else:
-        first_offline = next((i for i, state in enumerate(states) if state == "offline"), -1)
-        passed = first_offline >= 0 and any(
-            item["mode"] == "measured" and item["state"] not in ("offline", "missing")
-            for item in observations[first_offline + 1 :]
+        passed = len(measured) >= 2 and progressed and states[-1] not in (
+            "offline", "missing", "request_error"
         )
     return {"phase": phase, "passed": passed, "observations": observations}
 
@@ -76,7 +78,8 @@ def main(argv=None):
     if not 0 < args.interval <= args.duration <= 86400:
         parser.error("Require 0 < interval <= duration <= 86400 seconds")
     token = os.environ.get("EDGEPULSE_READ_TOKEN", "")
-    fetch = lambda path: fetch_json(args.url, path, token)
+    def fetch(path):
+        return fetch_json(args.url, path, token)
     result = validate_phase(fetch, args.device, args.phase, args.duration, args.interval)
     report = {
         "schema": 1,
@@ -88,7 +91,9 @@ def main(argv=None):
     with open(args.output, "w", encoding="utf-8") as file:
         json.dump(report, file, indent=2)
         file.write("\n")
-    print(json.dumps({"phase": args.phase, "passed": result["passed"], "output": args.output}))
+    print(
+        json.dumps({"phase": args.phase, "passed": result["passed"], "output": args.output})
+    )
     return 0 if result["passed"] else 1
 
 
