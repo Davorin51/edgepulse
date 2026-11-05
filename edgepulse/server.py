@@ -11,11 +11,13 @@ from fastapi.staticfiles import StaticFiles
 
 from edgepulse.alerts import fleet_alerts
 from edgepulse.domain import Fault, Sample, demo_sample
+from edgepulse.incidents import IncidentTracker
 from edgepulse.store import Store
 
 
 def create_app(database=None, token=None, demo=True, clock=time.time):
     store = Store(database or os.environ.get("EDGEPULSE_DB", "edgepulse.sqlite3"))
+    incidents = IncidentTracker(store.path)
     key = token if token is not None else os.environ.get("EDGEPULSE_TOKEN", "")
     read_key = os.environ.get("EDGEPULSE_READ_TOKEN", "")
     if read_key and len(read_key) < 24:
@@ -68,6 +70,21 @@ def create_app(database=None, token=None, demo=True, clock=time.time):
             raise HTTPException(401, "Invalid dashboard read token")
         active = fleet_alerts(store.fleet(clock()))
         return {"alerts": active, "count": len(active), "now": clock(), "type": "snapshot"}
+
+    @app.get("/api/incidents")
+    def incident_history(
+        limit: int = Query(default=50, ge=1, le=200),
+        status: str = Query(default="all", pattern="^(all|open|resolved)$"),
+        authorization: str = Header(default=""),
+    ):
+        if read_key and not hmac.compare_digest(
+            authorization.encode(), ("Bearer " + read_key).encode()
+        ):
+            raise HTTPException(401, "Invalid dashboard read token")
+        now = clock()
+        incidents.reconcile(store.fleet(now), now)
+        records = incidents.list(limit=limit, status=status)
+        return {"incidents": records, "count": len(records), "now": now, "tracking": "poll_on_read"}
 
     @app.get("/api/devices/{device_id}/history")
     def device_history(
