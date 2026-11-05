@@ -5,7 +5,7 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException, Path, Query, Request
+from fastapi import FastAPI, Header, HTTPException, Path as ApiPath, Query, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -98,7 +98,7 @@ def create_app(database=None, token=None, demo=True, clock=time.time):
 
     @app.get("/api/devices/{device_id}/history")
     def device_history(
-        device_id: str = Path(pattern=r"^[a-zA-Z0-9_-]{1,48}$"),
+        device_id: str = ApiPath(pattern=r"^[a-zA-Z0-9_-]{1,48}$"),
         limit: int = Query(default=60, ge=1, le=120),
         authorization: str = Header(default=""),
     ):
