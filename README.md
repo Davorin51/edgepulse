@@ -115,6 +115,13 @@ flowchart TD
 The static hosted demo uses a separate browser simulation with the same alert thresholds. It is
 not a hosted Python backend. The source archive includes both the Python system and static UI.
 
+## Real-device validation (v0.3)
+
+Use the read-only observation tool and the step-by-step protocol in
+[docs/real-device-validation.md](docs/real-device-validation.md). It records baseline,
+agent interruption/offline, and reconnection/recovery as separate JSON evidence files.
+These checks must still be run on physical hardware; CI only validates their logic.
+
 ## Tests
 
 ```bash
