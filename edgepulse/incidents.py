@@ -1,6 +1,6 @@
 """SQLite-backed incident lifecycle based on alert snapshots.
 
-Reconciliation occurs when the incident endpoint is queried. This is a polling-based
+Reconciliation runs periodically in the app lifespan. This is a polling-based
 prototype, not a guaranteed event capture service.
 """
 
@@ -21,8 +21,12 @@ class IncidentTracker:
                 severity TEXT NOT NULL,
                 payload TEXT NOT NULL,
                 opened REAL NOT NULL,
-                resolved REAL
+                resolved REAL,
+                acknowledged REAL
             )""")
+            columns = {row[1] for row in db.execute("PRAGMA table_info(incidents)")}
+            if "acknowledged" not in columns:
+                db.execute("ALTER TABLE incidents ADD COLUMN acknowledged REAL")
             db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS one_open_incident
                 ON incidents(device_id, kind) WHERE resolved IS NULL""")
 
@@ -54,7 +58,7 @@ class IncidentTracker:
         }[status]
         with sqlite3.connect(self.database, timeout=10) as db:
             rows = db.execute(
-                f"SELECT id,device_id,kind,severity,payload,opened,resolved FROM incidents {clause} ORDER BY id DESC LIMIT ?",
+                f"SELECT id,device_id,kind,severity,payload,opened,resolved,acknowledged FROM incidents {clause} ORDER BY id DESC LIMIT ?",
                 (limit,),
             ).fetchall()
         return [
@@ -67,6 +71,16 @@ class IncidentTracker:
                 "opened": opened,
                 "resolved": resolved,
                 "status": "resolved" if resolved is not None else "open",
+                "acknowledged": acknowledged,
             }
-            for ident, device, kind, severity, payload, opened, resolved in rows
+            for ident, device, kind, severity, payload, opened, resolved, acknowledged in rows
         ]
+
+    def acknowledge(self, incident_id: int, now: float) -> bool:
+        """Mark an incident reviewed without resolving it. Repeated calls are idempotent."""
+        with sqlite3.connect(self.database, timeout=10) as db:
+            cursor = db.execute(
+                "UPDATE incidents SET acknowledged=COALESCE(acknowledged, ?) WHERE id=?",
+                (now, incident_id),
+            )
+            return cursor.rowcount > 0
