@@ -1,6 +1,8 @@
 """Tests for optional fleet read authentication."""
+
 import pytest
 from fastapi.testclient import TestClient
+
 from edgepulse.server import create_app
 
 
