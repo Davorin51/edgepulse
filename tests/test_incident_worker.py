@@ -1,6 +1,6 @@
 """Background incident reconciliation tests."""
-import asyncio
 from fastapi.testclient import TestClient
+
 from edgepulse.domain import Sample
 from edgepulse.server import create_app
 
