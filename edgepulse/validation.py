@@ -54,7 +54,7 @@ def validate_phase(
             break
         sleep(min(interval, max(0, duration - elapsed)))
     states = [item["state"] for item in observations]
-    measured = [item for item in observations if item["mode"] == "measured"]
+    measured = [item for item in observations if item.get("mode") == "measured"]
     sequences = [item["sequence"] for item in measured]
     progressed = any(b > a for a, b in zip(sequences, sequences[1:], strict=False))
     if phase == "baseline":
