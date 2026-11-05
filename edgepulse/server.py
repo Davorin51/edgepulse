@@ -33,16 +33,27 @@ def create_app(database=None, token=None, demo=True, clock=time.time):
             tick += 1
             await asyncio.sleep(3)
 
+    async def monitor_incidents():
+        while True:
+            now = clock()
+            incidents.reconcile(store.fleet(now), now)
+            await asyncio.sleep(3)
+
     @asynccontextmanager
     async def lifespan(_):
-        task = asyncio.create_task(loop()) if demo else None
-        yield
-        if task:
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
+        tasks = [asyncio.create_task(monitor_incidents())]
+        if demo:
+            tasks.append(asyncio.create_task(loop()))
+        try:
+            yield
+        finally:
+            for task in tasks:
+                task.cancel()
+            for task in tasks:
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
 
     app = FastAPI(title="EdgePulse", lifespan=lifespan)
     app.state.store = store
@@ -82,9 +93,8 @@ def create_app(database=None, token=None, demo=True, clock=time.time):
         ):
             raise HTTPException(401, "Invalid dashboard read token")
         now = clock()
-        incidents.reconcile(store.fleet(now), now)
         records = incidents.list(limit=limit, status=status)
-        return {"incidents": records, "count": len(records), "now": now, "tracking": "poll_on_read"}
+        return {"incidents": records, "count": len(records), "now": now, "tracking": "background_poll"}
 
     @app.get("/api/devices/{device_id}/history")
     def device_history(
