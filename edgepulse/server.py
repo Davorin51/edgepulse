@@ -16,6 +16,9 @@ from edgepulse.store import Store
 def create_app(database=None, token=None, demo=True, clock=time.time):
     store = Store(database or os.environ.get("EDGEPULSE_DB", "edgepulse.sqlite3"))
     key = token if token is not None else os.environ.get("EDGEPULSE_TOKEN", "")
+    read_key = os.environ.get("EDGEPULSE_READ_TOKEN", "")
+    if read_key and len(read_key) < 24:
+        raise ValueError("EDGEPULSE_READ_TOKEN must have at least 24 characters")
     faults = {ident: Fault.normal for ident in ("pi-lab", "jetson-lab", "linux-lab")}
 
     async def loop():
@@ -48,10 +51,12 @@ def create_app(database=None, token=None, demo=True, clock=time.time):
 
     @app.get("/api/status")
     def status():
-        return {"service": "edgepulse", "demo_enabled": demo, "ingestion_enabled": len(key) >= 24}
+        return {"service": "edgepulse", "demo_enabled": demo, "ingestion_enabled": len(key) >= 24, "read_auth_enabled": bool(read_key)}
 
     @app.get("/api/fleet")
-    def fleet():
+    def fleet(authorization: str = Header(default="")):
+        if read_key and not hmac.compare_digest(authorization.encode(), ("Bearer " + read_key).encode()):
+            raise HTTPException(401, "Invalid dashboard read token")
         return {"devices": store.fleet(clock()), "now": clock()}
 
     @app.post("/api/telemetry", status_code=202)
