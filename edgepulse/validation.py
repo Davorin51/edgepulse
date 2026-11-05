@@ -19,7 +19,9 @@ def fetch_json(base_url, path, token="", timeout=5):
         return json.load(response)
 
 
-def validate_phase(fetch, device_id, phase, duration, interval, sleep=time.sleep, clock=time.monotonic):
+def validate_phase(
+    fetch, device_id, phase, duration, interval, sleep=time.sleep, clock=time.monotonic
+):
     """Observe server state; never send commands to a monitored device."""
     started = clock()
     observations = []
@@ -60,8 +62,10 @@ def validate_phase(fetch, device_id, phase, duration, interval, sleep=time.sleep
     elif phase == "outage":
         passed = "offline" in states
     else:
-        passed = len(measured) >= 2 and progressed and states[-1] not in (
-            "offline", "missing", "request_error"
+        passed = (
+            len(measured) >= 2
+            and progressed
+            and states[-1] not in ("offline", "missing", "request_error")
         )
     return {"phase": phase, "passed": passed, "observations": observations}
 
@@ -78,8 +82,10 @@ def main(argv=None):
     if not 0 < args.interval <= args.duration <= 86400:
         parser.error("Require 0 < interval <= duration <= 86400 seconds")
     token = os.environ.get("EDGEPULSE_READ_TOKEN", "")
+
     def fetch(path):
         return fetch_json(args.url, path, token)
+
     result = validate_phase(fetch, args.device, args.phase, args.duration, args.interval)
     report = {
         "schema": 1,
@@ -91,9 +97,7 @@ def main(argv=None):
     with open(args.output, "w", encoding="utf-8") as file:
         json.dump(report, file, indent=2)
         file.write("\n")
-    print(
-        json.dumps({"phase": args.phase, "passed": result["passed"], "output": args.output})
-    )
+    print(json.dumps({"phase": args.phase, "passed": result["passed"], "output": args.output}))
     return 0 if result["passed"] else 1
 
 
