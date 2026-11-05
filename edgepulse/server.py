@@ -118,9 +118,7 @@ def create_app(database=None, token=None, demo=True, clock=time.time):
         same_origin(request)
         if not read_key:
             raise HTTPException(503, "Configure EDGEPULSE_READ_TOKEN for incident writes")
-        if not hmac.compare_digest(
-            authorization.encode(), ("Bearer " + read_key).encode()
-        ):
+        if not hmac.compare_digest(authorization.encode(), ("Bearer " + read_key).encode()):
             raise HTTPException(401, "Invalid dashboard read token")
         if not incidents.acknowledge(incident_id, clock()):
             raise HTTPException(404, "Incident not found")
