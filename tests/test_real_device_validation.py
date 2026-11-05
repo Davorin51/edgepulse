@@ -21,7 +21,7 @@ def fake_device(sequence, state="healthy", mode="measured"):
 
 def run_phase(phase, snapshots):
     values = iter(snapshots)
-    ticks = iter(range(-1, len(snapshots)))
+    ticks = iter((0, *range(len(snapshots))))
 
     def fetch(_path):
         return next(values)
@@ -57,7 +57,7 @@ def test_request_errors_are_not_success():
     def fetch(_path):
         raise OSError("network down")
 
-    ticks = iter((-1, 0, 1))
+    ticks = iter((0, 0, 1))
     result = validate_phase(
         fetch, "pi-real", "outage", 1, 1, sleep=lambda _s: None, clock=lambda: next(ticks)
     )
