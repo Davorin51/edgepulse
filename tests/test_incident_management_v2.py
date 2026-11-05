@@ -35,7 +35,10 @@ def test_acknowledge_requires_auth_and_preserves_incident_status(tmp_path, monke
     app = create_app(database=tmp_path / "api.sqlite", demo=False, clock=lambda: 150)
     app.state.store.put(
         Sample(
-            device_id="pi", name="Pi", platform="Linux", mode="measured",
+            device_id="pi",
+            name="Pi",
+            platform="Linux",
+            mode="measured",
             cpu=95,
             memory=20,
             uptime=1,
