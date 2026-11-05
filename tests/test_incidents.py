@@ -8,8 +8,16 @@ from edgepulse.server import create_app
 
 
 def device(cpu=95, state="busy"):
-    return {"device_id": "node1", "name": "Node", "mode": "measured", "last_seen": 100,
-            "state": state, "cpu": cpu, "memory": 10, "temperature": None}
+    return {
+        "device_id": "node1",
+        "name": "Node",
+        "mode": "measured",
+        "last_seen": 100,
+        "state": state,
+        "cpu": cpu,
+        "memory": 10,
+        "temperature": None,
+    }
 
 
 def test_lifecycle_and_restart(tmp_path):
@@ -31,8 +39,19 @@ def test_incident_api_auth_and_filters(tmp_path, monkeypatch):
     token = "read-token-longer-than-twenty-four-characters"
     monkeypatch.setenv("EDGEPULSE_READ_TOKEN", token)
     app = create_app(database=tmp_path / "api.sqlite", demo=False, clock=lambda: 101)
-    app.state.store.put(Sample(device_id="node1", name="Node", platform="Linux", mode="measured",
-        cpu=95, memory=10, uptime=1, sequence=1), 100)
+    app.state.store.put(
+        Sample(
+            device_id="node1",
+            name="Node",
+            platform="Linux",
+            mode="measured",
+            cpu=95,
+            memory=10,
+            uptime=1,
+            sequence=1,
+        ),
+        100,
+    )
     with TestClient(app) as client:
         assert client.get("/api/incidents").status_code == 401
         headers = {"Authorization": f"Bearer {token}"}

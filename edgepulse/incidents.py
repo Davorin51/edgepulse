@@ -47,15 +47,26 @@ class IncidentTracker:
                     )
 
     def list(self, limit=50, status="all"):
-        clause = {"all": "", "open": "WHERE resolved IS NULL", "resolved": "WHERE resolved IS NOT NULL"}[status]
+        clause = {
+            "all": "",
+            "open": "WHERE resolved IS NULL",
+            "resolved": "WHERE resolved IS NOT NULL",
+        }[status]
         with sqlite3.connect(self.database, timeout=10) as db:
             rows = db.execute(
                 f"SELECT id,device_id,kind,severity,payload,opened,resolved FROM incidents {clause} ORDER BY id DESC LIMIT ?",
                 (limit,),
             ).fetchall()
         return [
-            {"id": ident, "device_id": device, "kind": kind, "severity": severity,
-             "alert": json.loads(payload), "opened": opened, "resolved": resolved,
-             "status": "resolved" if resolved is not None else "open"}
+            {
+                "id": ident,
+                "device_id": device,
+                "kind": kind,
+                "severity": severity,
+                "alert": json.loads(payload),
+                "opened": opened,
+                "resolved": resolved,
+                "status": "resolved" if resolved is not None else "open",
+            }
             for ident, device, kind, severity, payload, opened, resolved in rows
         ]

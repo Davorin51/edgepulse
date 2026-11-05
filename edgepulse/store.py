@@ -77,4 +77,7 @@ class Store:
                 "SELECT payload, received FROM samples WHERE device=? ORDER BY id DESC LIMIT ?",
                 (device_id, limit),
             ).fetchall()
-            return [{**json.loads(payload), "received": received} for payload, received in reversed(rows)]
+            return [
+                {**json.loads(payload), "received": received}
+                for payload, received in reversed(rows)
+            ]
