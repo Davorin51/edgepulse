@@ -91,6 +91,23 @@ Real agents are read-only: no remote shell, reboot command, configuration upload
 Liveness uses server receive-time, not a device's potentially incorrect wall clock. CPU/memory >=90%
 marks a nonthermal node busy. Each device retains at most 120 samples; intended for small labs.
 
+### Automated fault drill
+
+```bash
+python -m edgepulse.drill --output fault-drill.json
+```
+
+The drill starts its own loopback server on an available port and uses a temporary SQLite
+database. It runs the built-in Raspberry Pi simulator through baseline, overheating, cooldown,
+link loss, and recovery. Each fault must open an incident. Each recovery must produce a fresh
+telemetry sample and resolve the incident from the preceding fault.
+
+A normal run takes about 30 seconds. The report labels the telemetry as simulated and
+records each completed stage, its observed wait time, sample receipt time, and incident ID
+when applicable. Wait times include the simulator and incident worker polling intervals.
+The drill exits 0 on success or 1 with partial stage results and an error on failure.
+Omit `--output` to print the report to stdout. The file option requires a new path.
+
 ## Docker
 
 ```bash
