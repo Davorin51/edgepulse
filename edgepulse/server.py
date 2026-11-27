@@ -16,11 +16,11 @@ from edgepulse.incidents import IncidentTracker
 from edgepulse.store import Store
 
 
-def create_app(database=None, token=None, demo=True, clock=time.time):
+def create_app(database=None, token=None, demo=True, clock=time.time, *, read_token=None):
     store = Store(database or os.environ.get("EDGEPULSE_DB", "edgepulse.sqlite3"))
     incidents = IncidentTracker(store.path)
     key = token if token is not None else os.environ.get("EDGEPULSE_TOKEN", "")
-    read_key = os.environ.get("EDGEPULSE_READ_TOKEN", "")
+    read_key = read_token if read_token is not None else os.environ.get("EDGEPULSE_READ_TOKEN", "")
     if read_key and len(read_key) < 24:
         raise ValueError("EDGEPULSE_READ_TOKEN must have at least 24 characters")
     faults = {ident: Fault.normal for ident in ("pi-lab", "jetson-lab", "linux-lab")}
